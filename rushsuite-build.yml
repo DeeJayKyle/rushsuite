@@ -1,0 +1,117 @@
+name: Build RushSuite (Windows EXE + Android APK)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TAG: v1.0.${{ github.run_number }}
+
+jobs:
+  # Big files go straight into a GitHub Release (release files don't use the Actions storage quota).
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" --repo "${{ github.repository }}" --draft --title "RushSuite $TAG" \
+            --notes "Windows: download RushSuite-Setup-*.exe (plus any RushSuite-Setup-*.bin parts, keep them in the same folder) and run the .exe.  Android: install RushSuite.apk."
+
+  windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the app (portable Python, engines, voices, speech, OCR)
+        shell: powershell
+        run: ./build.ps1 -NoLLM -CI
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-logs
+          path: |
+            build.log
+            logs/
+          retention-days: 7
+
+      - name: Make installer (Inno Setup)
+        shell: powershell
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=1.0.${{ github.run_number }}" installer\RushSuite.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+          Get-ChildItem release | Format-Table Name, Length
+
+      - name: Upload installer to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" release/* --clobber --repo "${{ github.repository }}"
+
+  android:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+
+      - name: Install web dependencies and bundle the app
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Create the Android project
+        run: |
+          npx cap add android
+          node scripts/patch-android.mjs
+          npx cap sync android
+
+      - name: Build and sign the APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          $BT/zipalign -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          $BT/apksigner sign --ks ../keystore/rushsuite.jks --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD || 'rushsuite-release' }} \
+            --ks-key-alias rushsuite --out ../RushSuite.apk aligned.apk
+          $BT/apksigner verify ../RushSuite.apk
+
+      - name: Upload APK to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" RushSuite.apk --clobber --repo "${{ github.repository }}"
+
+  publish:
+    needs: [windows, android]
+    if: always() && (needs.windows.result == 'success' || needs.android.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --draft=false --repo "${{ github.repository }}"

@@ -1,0 +1,28 @@
+name: Unpack project.zip
+
+on:
+  push:
+    paths: ['*project.zip', '.github/workflows/unpack.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract the project into the repository
+        run: |
+          Z=$(ls *project.zip 2>/dev/null | head -1); if [ -z "$Z" ]; then echo "no project zip"; exit 0; fi
+          mkdir -p /tmp/p && unzip -q "$Z" -d /tmp/p
+          top=$(find /tmp/p -mindepth 1 -maxdepth 1 -type d | head -1)
+          rm -rf "$top/.github"
+          cp -a "$top"/. .
+          git rm -q --cached "$Z" && rm -f "$Z"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Unpack project files"
+          git push
