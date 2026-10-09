@@ -1,0 +1,23 @@
+# GUI, audio, hotkeys
+PySide6-Essentials>=6.7,<6.10
+sounddevice>=0.4.6
+soundfile>=0.12.1
+lameenc>=1.7
+numpy>=1.24
+scipy>=1.11
+psutil
+pillow>=10
+huggingface_hub>=0.23
+pynput>=1.7.6
+soundcard>=0.4.3
+# PDF engines
+pypdfium2>=4.30
+pikepdf>=9
+reportlab>=4.0
+pdfplumber>=0.11
+pypdf>=4.3
+# Office formats
+python-docx>=1.1
+python-pptx>=0.6.23
+openpyxl>=3.1
+comtypes>=1.4; sys_platform == "win32"

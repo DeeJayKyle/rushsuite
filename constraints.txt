@@ -1,0 +1,5 @@
+torch==2.5.1
+torchaudio==2.5.1
+# transformers 5.x changed internals used by XTTS; stay on the 4.x line
+transformers<5
+numpy<2.3

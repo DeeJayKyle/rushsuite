@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#0B0D12">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: capacitor: http://localhost https://localhost; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src *; media-src *">
+  <title>RushSuite</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header id="bar">
+    <button id="back" class="icon-btn" aria-label="Back"></button>
+    <div id="title">RushSuite</div>
+    <img src="icon.png" alt="" class="logo">
+  </header>
+  <main id="view"></main>
+  <nav id="tabs"></nav>
+  <div id="toast"></div>
+  <div id="progress"><div class="pbox"><div class="msg">Working…</div><div class="bar"><i></i></div></div></div>
+  <div id="modal"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

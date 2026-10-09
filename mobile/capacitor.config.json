@@ -1,0 +1,9 @@
+{
+  "appId": "com.rushsuite.app",
+  "appName": "RushSuite",
+  "webDir": "www",
+  "android": { "allowMixedContent": false, "backgroundColor": "#0B0D12" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
