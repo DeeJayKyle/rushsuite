@@ -1,13 +1,31 @@
 // Runs after `npx cap add android` (GitHub Actions): app icons, version, small manifest tweaks.
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const res = path.join(root, 'android/app/src/main/res');
 
-// icons
+// icons (made from the desktop icon with ImageMagick if the PNGs aren't in the repo)
 const icons = path.join(root, 'resources/android');
-for (const dir of fs.readdirSync(icons)) {
+if (!fs.existsSync(icons)) {
+  const src = path.join(root, '../app/assets/icon.png');
+  const sizes = { mdpi: [48, 108], hdpi: [72, 162], xhdpi: [96, 216], xxhdpi: [144, 324], xxxhdpi: [192, 432] };
+  try {
+    for (const [d, [s, f]] of Object.entries(sizes)) {
+      const dir = path.join(icons, `mipmap-${d}`);
+      fs.mkdirSync(dir, { recursive: true });
+      execSync(`convert "${src}" -resize ${s}x${s} "${dir}/ic_launcher.png"`);
+      fs.copyFileSync(`${dir}/ic_launcher.png`, `${dir}/ic_launcher_round.png`);
+      const inner = Math.round(f * 0.72);
+      execSync(`convert "${src}" -resize ${inner}x${inner} -background none -gravity center -extent ${f}x${f} "${dir}/ic_launcher_foreground.png"`);
+    }
+  } catch (e) {
+    console.warn('Icons skipped (ImageMagick not available):', e.message);
+    fs.rmSync(icons, { recursive: true, force: true });
+  }
+}
+for (const dir of (fs.existsSync(icons) ? fs.readdirSync(icons) : [])) {
   const dst = path.join(res, dir);
   fs.mkdirSync(dst, { recursive: true });
   for (const f of fs.readdirSync(path.join(icons, dir))) fs.copyFileSync(path.join(icons, dir, f), path.join(dst, f));
